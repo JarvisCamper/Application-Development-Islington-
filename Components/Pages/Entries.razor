@@ -1,0 +1,39 @@
+﻿@page "/entries"
+@using MudBlazor
+
+<MudPaper Class="pa-6" Elevation="2" MaxWidth="800px">
+
+    <MudText Typo="Typo.h5" GutterBottom="true">
+        All Journal Entries
+    </MudText>
+
+    <MudTable Items="entries" Dense="true" Hover="true">
+
+        <HeaderContent>
+            <MudTh>Date</MudTh>
+            <MudTh>Entry</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd>@context.Date</MudTd>
+            <MudTd>@context.Text</MudTd>
+        </RowTemplate>
+
+    </MudTable>
+
+</MudPaper>
+
+@code {
+
+    private List<JournalEntry> entries = new()
+    {
+        new JournalEntry { Date = "18 Dec 2025", Text = "Started building my journal app." },
+        new JournalEntry { Date = "19 Dec 2025", Text = "Worked on navigation and layout." }
+    };
+
+    private class JournalEntry
+    {
+        public string Date { get; set; } = "";
+        public string Text { get; set; } = "";
+    }
+}
