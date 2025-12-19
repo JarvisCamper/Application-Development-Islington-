@@ -1,0 +1,23 @@
+﻿@page "/calendar"
+@using MudBlazor
+
+<MudPaper Class="pa-6" Elevation="2" MaxWidth="600px">
+
+    <MudText Typo="Typo.h5" GutterBottom="true">
+        Journal Calendar
+    </MudText>
+
+    <MudText Typo="Typo.body2" Class="mb-4">
+        Select a date to view or write a journal entry.
+    </MudText>
+
+    <MudDatePicker @bind-Date="selectedDate"
+                   Label="Select Date"
+                   Variant="Variant.Outlined"
+                   PickerVariant="PickerVariant.Inline" />
+
+</MudPaper>
+
+@code {
+    private DateTime? selectedDate = DateTime.Today;
+}
