@@ -15,7 +15,6 @@
     {
         // Default to dark mode or load from preferences
         // For now, let's default to false (Light)
-        // In a real app, we'd load this from storage
         IsDarkMode = false;
         await ApplyTheme();
     }
@@ -24,7 +23,6 @@
     {
         IsDarkMode = !IsDarkMode;
         await ApplyTheme();
-        // Save preference here
     }
 
     private async Task ApplyTheme()

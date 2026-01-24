@@ -61,7 +61,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Try to restore session first (Remember Me)
+        // Restore session first
         await SecurityService.InitializeAsync();
 
         if (!SecurityService.IsAuthenticated)
