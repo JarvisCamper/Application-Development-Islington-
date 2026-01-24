@@ -2,9 +2,9 @@
 
 namespace JournalApp.Entities
 {
-    /// <summary>
+  
     /// Represents a mood that can be associated with journal entries
-    /// </summary>
+
     public class Mood : BaseEntity
     {
         public string Name { get; set; } = string.Empty;

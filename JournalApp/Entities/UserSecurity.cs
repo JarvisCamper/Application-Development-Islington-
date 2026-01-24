@@ -1,8 +1,8 @@
 ﻿namespace JournalApp.Entities
 {
-    /// <summary>
+    
     /// Represents user security credentials for application authentication
-    /// </summary>
+   
     public class UserSecurity : BaseEntity
     {
         public string PasswordHash { get; set; } = string.Empty;

@@ -1,8 +1,8 @@
 ﻿namespace JournalApp.Entities
 {
-    /// <summary>
+ 
     /// Represents a category for organizing journal entries
-    /// </summary>
+    
     public class Category : BaseEntity
     {
         public string Name { get; set; } = string.Empty;

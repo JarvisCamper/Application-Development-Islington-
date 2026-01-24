@@ -1,9 +1,8 @@
 ﻿namespace JournalApp.Entities
 {
-    /// <summary>
     /// Represents a journal entry for a specific date
     /// Only one entry is allowed per day
-    /// </summary>
+
     public class JournalEntry : BaseEntity
     {
         public DateTime Date { get; set; }

@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JournalApp.Data
 {
-    /// <summary>
+    
     /// Database context for the Journal application
-    /// </summary>
+   
     public class AppDbContext : DbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
@@ -28,32 +28,32 @@ namespace JournalApp.Data
             {
                 entity.HasKey(e => e.Id);
                 
-                // Unique constraint on Date - only one entry per day
+                // Unique constraint on Date 
                 entity.HasIndex(e => e.Date).IsUnique();
                 
                 entity.Property(e => e.Title).HasMaxLength(200);
                 entity.Property(e => e.Content).IsRequired();
                 entity.Property(e => e.Date).IsRequired();
 
-                // Primary Mood relationship (required)
+                // Primary Mood relationship 
                 entity.HasOne(e => e.PrimaryMood)
                     .WithMany(m => m.PrimaryMoodEntries)
                     .HasForeignKey(e => e.PrimaryMoodId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Secondary Mood 1 relationship (optional)
+                // Secondary Mood 1 relationship 
                 entity.HasOne(e => e.SecondaryMood1)
                     .WithMany(m => m.SecondaryMood1Entries)
                     .HasForeignKey(e => e.SecondaryMood1Id)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Secondary Mood 2 relationship (optional)
+                // Secondary Mood 2 relationship 
                 entity.HasOne(e => e.SecondaryMood2)
                     .WithMany(m => m.SecondaryMood2Entries)
                     .HasForeignKey(e => e.SecondaryMood2Id)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Category relationship (optional)
+                // Category relationship 
                 entity.HasOne(e => e.Category)
                     .WithMany(c => c.JournalEntries)
                     .HasForeignKey(e => e.CategoryId)
