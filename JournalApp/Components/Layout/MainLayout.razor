@@ -1,0 +1,123 @@
+﻿@using JournalApp.Services
+@inherits LayoutComponentBase
+@inject ISecurityService SecurityService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<div class="page @(sidebarCollapsed ? "sidebar-collapsed" : "")">
+    <div class="sidebar-overlay @(sidebarCollapsed ? "" : "visible")" @onclick="ToggleSidebar"></div>
+    
+    <div class="sidebar @(sidebarCollapsed ? "collapsed" : "")">
+        <NavMenu OnToggleSidebar="ToggleSidebar" />
+    </div>
+
+    <main class="@(sidebarCollapsed ? "expanded" : "")">
+        <div class="top-row px-4 d-flex justify-content-between">
+            <!-- Left: Toggle & Welcome -->
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn-toggle-sidebar" @onclick="ToggleSidebar" title="Toggle menu">
+                    <div class="hamburger-icon">
+                         <span></span>
+                         <span></span>
+                         <span></span>
+                    </div>
+                </button>
+                
+                <div class="text-serif" style="color: var(--ink-primary); font-size: 1.1rem;">
+                    Welcome, <span class="fw-bold text-gold">@displayName</span>
+                </div>
+            </div>
+            
+            <!-- Right: Theme Toggle -->
+            <div>
+                 <button class="btn-theme-toggle" @onclick="ToggleTheme" title="Toggle theme">
+                    @if (isDarkMode)
+                    {
+                        <span>☀️</span>
+                    }
+                    else
+                    {
+                        <span>🌙</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            <CascadingValue Value="ToastRef">
+                @Body
+            </CascadingValue>
+        </article>
+    </main>
+    
+    <JournalApp.Components.Common.Toast @ref="ToastRef" />
+</div>
+
+@code {
+    private bool sidebarCollapsed = false;
+    private bool isDarkMode = false;
+    private string displayName = "Journalist";
+    private JournalApp.Components.Common.Toast? ToastRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Try to restore session first (Remember Me)
+        await SecurityService.InitializeAsync();
+
+        if (!SecurityService.IsAuthenticated)
+        {
+            if(await SecurityService.IsPasswordSetAsync())
+            {
+                 NavigationManager.NavigateTo("/login");
+            }
+            else
+            {
+                 NavigationManager.NavigateTo("/setup-password");
+            }
+        }
+        else
+        {
+            displayName = await SecurityService.GetUserDisplayNameAsync();
+        }
+        
+        await LoadThemePreference();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadThemePreference();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadThemePreference()
+    {
+        try
+        {
+            var savedTheme = await JS.InvokeAsync<string>("localStorage.getItem", "journal-theme");
+            isDarkMode = savedTheme == "dark";
+            await ApplyTheme();
+        }
+        catch { }
+    }
+
+    private async Task ApplyTheme()
+    {
+        var themeClass = isDarkMode ? "dark-mode" : "";
+        await JS.InvokeVoidAsync("eval", $"document.body.className = '{themeClass}'");
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        await ApplyTheme();
+        await JS.InvokeVoidAsync("localStorage.setItem", "journal-theme", isDarkMode ? "dark" : "light");
+    }
+
+    private void ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+    }
+}

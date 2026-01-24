@@ -1,0 +1,34 @@
+﻿@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    public bool IsDarkMode { get; private set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Default to dark mode or load from preferences
+        // For now, let's default to false (Light)
+        // In a real app, we'd load this from storage
+        IsDarkMode = false;
+        await ApplyTheme();
+    }
+
+    public async Task ToggleTheme()
+    {
+        IsDarkMode = !IsDarkMode;
+        await ApplyTheme();
+        // Save preference here
+    }
+
+    private async Task ApplyTheme()
+    {
+        await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", IsDarkMode ? "dark" : "light");
+    }
+}

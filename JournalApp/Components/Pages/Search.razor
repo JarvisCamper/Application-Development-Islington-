@@ -1,0 +1,238 @@
+﻿@page "/search"
+@using JournalApp.Models.JournalEntry
+@using JournalApp.Models.Mood
+@using JournalApp.Models.Tag
+@using JournalApp.Models.Common
+@using JournalApp.Services
+@inject IJournalService JournalService
+@inject IMoodService MoodService
+@inject ITagService TagService
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid animate-fade-in p-4">
+    <div class="glass-card mb-4">
+        <h2 class="text-gradient mb-4">Search & Filter</h2>
+        
+        <div class="row g-3">
+            <div class="col-md-6">
+                 <input type="text" @bind="searchTerm" class="form-control input-modern" placeholder="Search title or content..." />
+            </div>
+            <div class="col-md-3">
+                <input type="date" @bind="startDate" class="form-control input-modern" />
+            </div>
+            <div class="col-md-3">
+                 <input type="date" @bind="endDate" class="form-control input-modern" />
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-6">
+                <label class="text-white-50 small">Filter by Mood</label>
+                 <select @bind="selectedMoodId" class="form-select input-modern">
+                    <option value="">All Moods</option>
+                    @foreach (var mood in moods)
+                    {
+                        <option value="@mood.Id">@mood.Icon @mood.Name</option>
+                    }
+                </select>
+            </div>
+             <div class="col-md-6">
+                 <label class="text-white-50 small">Filter by Tag</label>
+                 <select @bind="selectedTagId" class="form-select input-modern">
+                    <option value="">All Tags</option>
+                    @foreach (var tag in tags)
+                    {
+                        <option value="@tag.Id">#@tag.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        
+        <div class="mt-4 text-end">
+            <button class="btn btn-modern px-4" @onclick="PerformSearch">Search</button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+         <div class="d-flex justify-content-center my-5" style="min-height: 200px; position:relative;">
+            <LoadingSpinner />
+        </div>
+    }
+    else if (searchResults != null)
+    {
+        <h4 class="mb-3">Results (@searchResults.TotalCount)</h4>
+        
+        @if (searchResults.TotalCount == 0)
+        {
+             <div class="text-center py-5 text-white-50">
+                <p>No entries found matching your criteria.</p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var entry in searchResults.Items)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="glass-card h-100" @onclick="() => NavigateToEntry(entry.Id)" style="cursor:pointer">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="badge bg-white text-dark bg-opacity-75">@entry.Date.ToString("MMM dd, yyyy")</span>
+                                <span>@entry.PrimaryMoodIcon</span>
+                            </div>
+                            <h5 class="text-truncate">@entry.Title</h5>
+                            <p class="small text-white-50 mb-2 card-text-preview">
+                                @GetTruncatedContent(entry.Content)
+                            </p>
+                            <div class="d-flex gap-1 flex-wrap mt-2" style="height: 24px; overflow: hidden;">
+                                @foreach(var tag in entry.Tags.Take(3)) 
+                                {
+                                     <span class="notebook-tag small" role="button" @onclick="() => NavigateToSearch(tag.Id)" @onclick:stopPropagation="true">#@tag.Name</span> 
+                                }
+                                @if(entry.TagCount > 3)
+                                {
+                                    <span class="notebook-tag small text-muted">+@(entry.TagCount - 3)</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+             
+             <!-- Pagination -->
+            @if (totalPages > 1)
+            {
+                <div class="d-flex justify-content-center align-items-center gap-3 mt-4">
+                    <button class="btn btn-sm btn-outline-light border-secondary text-muted" disabled="@(currentPage <= 1)" @onclick="PrevPage">
+                        ◀ Previous
+                    </button>
+                    <span class="small text-muted">Page @currentPage of @totalPages</span>
+                    <button class="btn btn-sm btn-outline-light border-secondary text-muted" disabled="@(currentPage >= totalPages)" @onclick="NextPage">
+                        Next ▶
+                    </button>
+                </div>
+            }
+        }
+    }
+</div>
+
+<style>
+    .card-text-preview {
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        display: -webkit-box; 
+        -webkit-line-clamp: 2; 
+        -webkit-box-orient: vertical; 
+        height: 2.8em; /* Force fixed height */
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery(Name = "tagId")]
+    public int? QueryTagId { get; set; }
+
+    private string searchTerm = "";
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private int? selectedMoodId;
+    private int? selectedTagId;
+
+    private List<MoodDto> moods = new();
+    private List<TagDto> tags = new();
+    private PaginatedResult<JournalEntryListDto>? searchResults;
+    private bool isLoading = false;
+    private int currentPage = 1;
+    private int pageSize = 12;
+    private int totalPages = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var moodTask = MoodService.GetAllMoodsAsync();
+        var tagTask = TagService.GetAllTagsAsync();
+        await Task.WhenAll(moodTask, tagTask);
+        
+        moods = (await moodTask).ToList();
+        tags = (await tagTask).ToList();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (QueryTagId.HasValue && QueryTagId != selectedTagId)
+        {
+            selectedTagId = QueryTagId;
+            // Clear query param to avoid stuck state if needed, or just sync
+            // Navigate to same page without query param might be cleaner but for now just sync
+        }
+        
+        if (searchResults == null || (QueryTagId.HasValue && currentPage == 1))
+        {
+             await PerformSearch();
+        }
+    }
+
+    private async Task PerformSearch()
+    {
+        isLoading = true;
+        try
+        {
+             var filter = new SearchFilterDto
+             {
+                 SearchTerm = searchTerm,
+                 StartDate = startDate,
+                 EndDate = endDate,
+                 MoodIds = selectedMoodId.HasValue ? new List<int> { selectedMoodId.Value } : null,
+                 TagIds = selectedTagId.HasValue ? new List<int> { selectedTagId.Value } : null,
+                 Pagination = new PaginationDto { PageNumber = currentPage, PageSize = pageSize }
+             };
+             
+             searchResults = await JournalService.SearchEntriesAsync(filter);
+             totalPages = (int)Math.Ceiling((double)searchResults.TotalCount / pageSize);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await PerformSearch();
+        }
+    }
+    
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await PerformSearch();
+        }
+    }
+    
+    private void NavigateToEntry(int id)
+    {
+         NavigationManager.NavigateTo($"/add-entry/{id}");
+    }
+
+    private string GetTruncatedContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return string.Empty;
+        
+        // Strict char limit
+        if (content.Length > 80)
+        {
+            return content.Substring(0, 80) + "...";
+        }
+        return content;
+    }
+    
+    private void NavigateToSearch(int tagId)
+    {
+        selectedTagId = tagId;
+        currentPage = 1;
+        NavigationManager.NavigateTo($"search?tagId={tagId}");
+    }
+}

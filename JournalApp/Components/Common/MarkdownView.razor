@@ -1,0 +1,23 @@
+@using Markdig
+@namespace JournalApp.Components.Common
+
+<div class="markdown-body">
+    @((MarkupString)RenderMarkdown())
+</div>
+
+@code {
+    [Parameter]
+    public string Content { get; set; } = string.Empty;
+
+    private string RenderMarkdown()
+    {
+        if (string.IsNullOrWhiteSpace(Content))
+            return string.Empty;
+
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+
+        return Markdown.ToHtml(Content, pipeline);
+    }
+}

@@ -1,0 +1,82 @@
+/* NavMenu scoped styles */
+
+/* Brand Header */
+.sidebar-brand {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    text-align: center;
+    background: linear-gradient(180deg, var(--paper-surface) 0%, var(--sidebar-bg) 100%);
+}
+
+.brand-title {
+    font-family: var(--font-serif);
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: var(--ink-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.brand-icon {
+    font-size: 1.5rem;
+}
+
+/* Navigation Container */
+.sidebar-nav {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+/* Navigation Items */
+.nav-item-journal {
+    margin-bottom: 0.25rem;
+}
+
+.nav-link-journal {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    color: var(--nav-text);
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    transition: all 0.15s ease;
+}
+
+.nav-link-journal:hover {
+    background: var(--nav-bg-hover);
+    color: var(--nav-text-active);
+    transform: translateX(4px);
+}
+
+.nav-link-journal.active {
+    background: var(--nav-bg-active);
+    color: var(--nav-accent);
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--nav-accent);
+}
+
+.nav-link-journal .nav-icon {
+    font-size: 1.125rem;
+    width: 1.5rem;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.nav-link-journal:hover .nav-icon,
+.nav-link-journal.active .nav-icon {
+    opacity: 1;
+}
+
+/* Footer */
+.sidebar-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+}

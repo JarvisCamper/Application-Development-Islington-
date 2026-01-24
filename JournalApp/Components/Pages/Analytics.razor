@@ -1,0 +1,157 @@
+﻿@page "/analytics"
+@using JournalApp.Models.Analytics
+@using JournalApp.Services
+@inject IAnalyticsService AnalyticsService
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid animate-fade-in p-4">
+    <h2 class="text-gradient mb-4">Your Insights</h2>
+
+    @if (analytics == null)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="height: 50vh">
+            <LoadingSpinner />
+        </div>
+    }
+    else
+    {
+        <!-- Key Metrics -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="glass-card text-center">
+                    <span class="fs-1">🔥</span>
+                    <h3 class="mt-2">@analytics.Streak.LongestStreak</h3>
+                    <p class="text-white-50 mb-0">Longest Streak</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card text-center">
+                    <span class="fs-1">📝</span>
+                    <h3 class="mt-2">@analytics.Streak.TotalEntries</h3>
+                    <p class="text-white-50 mb-0">Total Entries</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-card text-center">
+                    <span class="fs-1">🏷️</span>
+                    <h3 class="mt-2">@(string.IsNullOrEmpty(analytics.MostUsedTag) ? "-" : analytics.MostUsedTag)</h3>
+                    <p class="text-white-50 mb-0">Top Tag</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mood Distribution -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="glass-card">
+                    <h4 class="mb-4">Mood Distribution</h4>
+                    
+                    @if (!analytics.MoodDistribution.Any())
+                    {
+                        <p class="text-center text-white-50 py-4">Not enough data yet.</p>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-3">
+                            @foreach (var mood in analytics.MoodDistribution.Take(5))
+                            {
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>@mood.MoodName</span>
+                                        <span>@Math.Round(mood.Percentage)%</span>
+                                    </div>
+                                    <div class="progress" style="height: 10px; background: rgba(255,255,255,0.1);">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: @mood.Percentage%; background-color: @mood.Color; box-shadow: 0 0 10px @mood.Color" 
+                                             aria-valuenow="@mood.Percentage" aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Cloud (Simple List for now) -->
+        <div class="row">
+             <div class="col-12">
+                <div class="glass-card mb-4">
+                    <h4 class="mb-3">Tag Breakdown</h4>
+                     @if (analytics.TagUsage.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var tag in analytics.TagUsage.Take(15))
+                            {
+                                <div class="d-flex align-items-center gap-2 px-3 py-2 rounded-pill tag-pill-hover" 
+                                     style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"
+                                     @onclick="() => NavigateToSearch(tag.TagId)">
+                                    <span class="fw-bold">#@tag.TagName</span>
+                                    <div class="progress" style="width: 50px; height: 6px;">
+                                        <div class="progress-bar bg-info" style="width: @(tag.Percentage)%"></div>
+                                    </div>
+                                    <span class="small text-white-50">@Math.Round(tag.Percentage)%</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                         <p class="text-white-50">No tags used yet.</p>
+                    }
+                </div>
+                
+                <!-- Word Count Trends -->
+                 <div class="glass-card">
+                    <h4 class="mb-3">Word Count Trends</h4>
+                    @if (analytics.WordCountTrends.Any())
+                    {
+                        <div class="d-flex align-items-end gap-1 pb-2" style="height: 180px; overflow-x: auto; overflow-y: hidden;">
+                            @foreach (var trend in analytics.WordCountTrends)
+                            {
+                                var maxWords = analytics.WordCountTrends.Max(t => t.WordCount);
+                                var height = maxWords > 0 ? (trend.WordCount / (double)maxWords * 100) : 0;
+                                
+                                <div class="d-flex flex-column align-items-center justify-content-end" style="min-width: 30px; margin-bottom: 24px; position:relative;">
+                                     <div class="w-100 rounded-top" 
+                                          style="height: @(height * 1.5)px; max-height: 120px; background: var(--secondary); opacity: 0.8; transition: height 0.3s;" 
+                                          title="@trend.WordCount words">
+                                          @if(height > 20) { <span class="d-block text-center text-white small" style="font-size: 0.6rem; margin-top: -16px;">@trend.WordCount</span> }
+                                     </div>
+                                     <small class="text-white-50 text-center" style="font-size: 0.6rem; position: absolute; bottom: -20px; width: 50px;">@trend.Date.ToString("dd")</small>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-white-50">Write more entries to see trends.</p>
+                    }
+                </div>
+             </div>
+        </div>
+    }
+</div>
+
+<style>
+    .tag-pill-hover:hover {
+        background: rgba(255,255,255,0.1) !important;
+        transform: translateY(-1px);
+        transition: all 0.2s;
+    }
+</style>
+
+@code {
+    private AnalyticsDto? analytics;
+
+    protected override async Task OnInitializedAsync()
+    {
+        analytics = await AnalyticsService.GetAnalyticsAsync();
+    }
+
+    private void NavigateToSearch(int tagId)
+    {
+        NavigationManager.NavigateTo($"search?tagId={tagId}");
+    }
+}

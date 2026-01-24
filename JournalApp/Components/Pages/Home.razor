@@ -1,0 +1,366 @@
+﻿@page "/"
+@using JournalApp.Models.Analytics
+@using JournalApp.Models.JournalEntry
+@using JournalApp.Services
+@inject IAnalyticsService AnalyticsService
+@inject IJournalService JournalService
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid animate-fade-in-up p-4">
+    <div class="row g-4 mb-4">
+        <!-- Header Section -->
+        <div class="col-12">
+            <h1 class="text-serif text-gradient mb-1">Dashboard</h1>
+            <p class="text-muted">Your journey at a glance.</p>
+        </div>
+
+        <!-- Left Column: Calendar & Streak -->
+        <div class="col-lg-5">
+            <!-- Calendar Card -->
+            <div class="paper-card mb-4 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-serif mb-0">📅 @currentMonthName @currentYear</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary border-0" @onclick="PrevMonth">◀</button>
+                        <button class="btn btn-sm btn-outline-secondary border-0" @onclick="NextMonth">▶</button>
+                    </div>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="calendar-header-row text-muted small fw-bold text-center mb-2">
+                        <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                    </div>
+                    <div class="calendar-days-grid">
+                        @for (int i = 0; i < emptyDays; i++)
+                        {
+                            <div class="calendar-day empty"></div>
+                        }
+                        @for (int day = 1; day <= daysInMonth; day++)
+                        {
+                            var date = new DateTime(currentYear, currentMonth, day);
+                            var isToday = date.Date == DateTime.Today;
+                            var hasEntry = journalDates.Contains(date.Date);
+                            var isPast = date.Date < DateTime.Today;
+
+                            string dayClass = "";
+                            if (isToday) dayClass = "today"; // Black with white text
+                            else if (hasEntry) dayClass = "has-entry"; // Green bg
+                            else if (isPast) dayClass = "missed"; // Red bg
+                            else dayClass = "future"; // Default
+
+                            <div class="calendar-day @dayClass" @onclick="() => NavigateToDate(date)">
+                                @day
+                            </div>
+                        }
+                    </div>
+                </div>
+                 <div class="d-flex justify-content-center gap-3 mt-3 small text-muted">
+                    <div class="d-flex align-items-center gap-1"><span class="legend-dot today"></span> Today</div>
+                    <div class="d-flex align-items-center gap-1"><span class="legend-dot has-entry"></span> Written</div>
+                    <div class="d-flex align-items-center gap-1"><span class="legend-dot missed"></span> Missed</div>
+                </div>
+            </div>
+
+            <!-- Write New Entry Button -->
+             <button class="btn-primary-journal w-100 py-3 mb-4 shadow-sm" @onclick="NavigateToAdd">
+                <span class="fs-5">✍️ Write Today's Entry</span>
+            </button>
+            
+            <!-- Streak Card -->
+            <div class="paper-card p-3 d-flex align-items-center justify-content-between">
+                <div>
+                     <span class="text-muted small text-uppercase fw-bold">Current Streak</span>
+                     <div class="display-6 fw-bold text-serif" style="color: var(--accent-gold);">
+                         @(streakInfo?.CurrentStreak ?? 0) <span class="fs-6 text-muted fw-normal">days</span>
+                     </div>
+                </div>
+                <div class="text-end">
+                     <span class="text-muted small text-uppercase fw-bold">Longest</span>
+                     <div class="fs-4 fw-bold text-muted">@(streakInfo?.LongestStreak ?? 0)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Recent Entries -->
+        <div class="col-lg-7">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-serif mb-0">Recent Entries</h4>
+                <a href="search" class="text-decoration-none text-muted small fw-bold">VIEW ALL →</a>
+            </div>
+
+             @if (recentEntries == null)
+            {
+                <div class="text-center py-5 position-relative" style="min-height: 200px;">
+                     <LoadingSpinner />
+                </div>
+            }
+            else if (!recentEntries.Any())
+            {
+                <div class="paper-card text-center py-5 text-muted">
+                    <p>No entries yet. Start by writing your first journal entry!</p>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var entry in recentEntries)
+                    {
+                        <div class="paper-card p-3 entry-card-hover" @onclick="() => NavigateToEntry(entry.Id)" style="cursor:pointer; transition: transform 0.2s;">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small fw-bold text-uppercase">
+                                    @entry.Date.ToString("MMM dd, yyyy") 
+                                </span>
+                                <span>@entry.PrimaryMoodIcon</span>
+                            </div>
+                            <h5 class="text-serif mb-2 text-truncate">@entry.Title</h5>
+                            <p class="text-muted small mb-2 card-text-preview">
+                                @GetTruncatedContent(entry.Content)
+                            </p>
+                            <div class="d-flex gap-1 flex-wrap" style="height: 24px; overflow: hidden;">
+                                @foreach(var tag in entry.Tags.Take(3)) 
+                                {
+                                     <span class="notebook-tag small" role="button" @onclick="() => NavigateToSearch(tag.Id)" @onclick:stopPropagation="true">#@tag.Name</span> 
+                                }
+                                @if(entry.TagCount > 3)
+                                {
+                                    <span class="notebook-tag small text-muted">+@(entry.TagCount - 3)</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Inline Styles for Calendar */
+    .calendar-grid {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .card-text-preview {
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        display: -webkit-box; 
+        -webkit-line-clamp: 2; 
+        -webkit-box-orient: vertical; 
+        height: 2.8em; /* Force fixed height */
+    }
+    
+    .calendar-header-row {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+    }
+    
+    .calendar-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+    
+    .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        color: var(--ink-primary);
+    }
+    
+    .calendar-day:hover:not(.empty) {
+        border-color: var(--accent-gold);
+    }
+
+    .calendar-day.today {
+        background-color: #000000;
+        color: #ffffff !important;
+        font-weight: bold;
+    }
+
+    /* Dark mode override for today (white bg, black text) */
+    body.dark-mode .calendar-day.today {
+        background-color: #e0e0e0;
+        color: #000000 !important;
+        border: 2px solid #555;
+    }
+    
+    .calendar-day.has-entry {
+        background-color: rgba(34, 197, 94, 0.2);
+        color: #15803d;
+        font-weight: 500;
+    }
+    
+    /* Dark mode override for has-entry */
+    body.dark-mode .calendar-day.has-entry {
+         background-color: rgba(34, 197, 94, 0.3);
+         color: #4ade80;
+    }
+
+    .calendar-day.missed {
+        background-color: rgba(239, 68, 68, 0.15);
+        color: #b91c1c;
+    }
+    
+    /* Dark mode override for missed */
+    body.dark-mode .calendar-day.missed {
+        background-color: rgba(239, 68, 68, 0.25);
+        color: #f87171;
+    }
+    
+    .calendar-day.future {
+        opacity: 0.5;
+        cursor: default;
+    }
+    
+    body.dark-mode .calendar-day {
+        color: #e0e0e0;
+    }
+    
+    body.dark-mode .calendar-day:hover:not(.empty) {
+        border-color: var(--accent-gold);
+        background-color: rgba(255,255,255,0.05);
+    }
+    .calendar-day.has-entry.today {
+         background-color: #000000;
+         color: #ffffff !important;
+         border: 2px solid #22c55e;
+    }
+
+
+    .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .legend-dot.today { background: black; }
+    body.dark-mode .legend-dot.today { background: white; }
+    .legend-dot.has-entry { background: #22c55e; }
+    .legend-dot.missed { background: #ef4444; }
+    
+    .notebook-tag {
+        background: rgba(0,0,0,0.05);
+        padding: 2px 8px;
+        border-radius: 4px;
+        color: var(--text-secondary);
+        transition: background 0.2s;
+    }
+    .notebook-tag:hover {
+        background: rgba(0,0,0,0.1);
+        color: var(--primary);
+    }
+</style>
+
+@code {
+    private StreakDto? streakInfo;
+    private List<JournalEntryListDto>? recentEntries;
+    private HashSet<DateTime> journalDates = new();
+    
+    private int currentMonth = DateTime.Today.Month;
+    private int currentYear = DateTime.Today.Year;
+    private int daysInMonth;
+    private int emptyDays;
+    private string currentMonthName => new DateTime(currentYear, currentMonth, 1).ToString("MMMM");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+        await LoadCalendarData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        var streakTask = AnalyticsService.GetStreakInfoAsync();
+        var entriesTask = JournalService.GetEntriesAsync(new JournalApp.Models.Common.PaginationDto { PageNumber = 1, PageSize = 4 });
+
+        await Task.WhenAll(streakTask, entriesTask);
+
+        streakInfo = await streakTask;
+        recentEntries = (await entriesTask).Items.ToList();
+    }
+    
+    private async Task LoadCalendarData()
+    {
+        // Calculate calendar layout
+        DateTime firstDayOfMonth = new DateTime(currentYear, currentMonth, 1);
+        daysInMonth = DateTime.DaysInMonth(currentYear, currentMonth);
+        emptyDays = (int)firstDayOfMonth.DayOfWeek;
+
+        // Fetch entries for this month to populate calendar
+        var filter = new JournalApp.Models.Common.SearchFilterDto 
+        { 
+            StartDate = firstDayOfMonth,
+            EndDate = firstDayOfMonth.AddMonths(1).AddDays(-1),
+            Pagination = new JournalApp.Models.Common.PaginationDto { PageSize = 100 } // Fetch enough for month
+        };
+        
+        var monthEntries = await JournalService.SearchEntriesAsync(filter);
+        journalDates = monthEntries.Items.Select(e => e.Date.Date).ToHashSet();
+    }
+
+    private async Task PrevMonth()
+    {
+        currentMonth--;
+        if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+        await LoadCalendarData();
+    }
+    
+    private async Task NextMonth()
+    {
+        currentMonth++;
+        if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+        await LoadCalendarData();
+    }
+
+    private void NavigateToAdd()
+    {
+        NavigationManager.NavigateTo("/add-entry");
+    }
+
+    private async Task NavigateToDate(DateTime date)
+    {
+        // Check if entry exists for date
+        var existingEntry = await JournalService.GetEntryByDateAsync(date);
+        
+        if (existingEntry != null)
+        {
+            NavigationManager.NavigateTo($"/add-entry/{existingEntry.Id}");
+        }
+        else if (date <= DateTime.Today)
+        {
+             // Pass date via query parameter ideally, but for now just navigate to add which defaults to today, 
+             // logic to support date parameter could be added to AddJournalEntry
+             NavigationManager.NavigateTo($"/add-entry"); 
+             // Note: A real improvement would be /add-entry?date=... or similar
+        }
+    }
+
+    private void NavigateToEntry(int id)
+    {
+         NavigationManager.NavigateTo($"/add-entry/{id}");
+    }
+
+    private string GetTruncatedContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return string.Empty;
+        
+        // Strict char limit
+        if (content.Length > 80)
+        {
+            return content.Substring(0, 80) + "...";
+        }
+        return content;
+    }
+
+    private void NavigateToSearch(int tagId)
+    {
+        NavigationManager.NavigateTo($"search?tagId={tagId}");
+    }
+}

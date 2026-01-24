@@ -1,0 +1,149 @@
+﻿@page "/settings"
+@using JournalApp.Models.Common
+@using JournalApp.Services
+@using JournalApp.Components.Common
+@inject IExportService ExportService
+@inject ISecurityService SecurityService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<div class="container-fluid animate-fade-in-up p-4">
+    <h2 class="text-serif text-gradient mb-4">Settings</h2>
+
+    <div class="row g-4">
+        <!-- Export Section -->
+        <div class="col-md-6">
+            <div class="paper-card h-100">
+                <h4 class="text-serif mb-3">📝 Data Export</h4>
+                <p class="text-muted mb-4">Export your journal entries to PDF.</p>
+
+                <div class="mb-3">
+                    <label class="label-journal">Start Date</label>
+                    <input type="date" class="input-journal" @bind="startDate" />
+                </div>
+                <div class="mb-3">
+                    <label class="label-journal">End Date</label>
+                    <input type="date" class="input-journal" @bind="endDate" />
+                </div>
+
+                <button class="btn-primary-journal w-100 mt-3" @onclick="ExportPdf" disabled="@isExporting">
+                    @if (isExporting)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span> Generating...</span>
+                    }
+                    else
+                    {
+                        <span>📥 Download PDF</span>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <!-- Security & Customization -->
+        <div class="col-md-6">
+            <div class="paper-card h-100 d-flex flex-column">
+                <h4 class="text-serif mb-3">⚙️ Preferences & Security</h4>
+                
+                <div class="mb-4">
+                    <label class="label-journal">App Theme</label>
+                    <button class="btn-outline-journal w-100 d-flex align-items-center justify-content-center gap-2" @onclick="ToggleTheme">
+                        <span class="fs-5">@(isDarkMode ? "☀️" : "🌙")</span>
+                        <span>@(isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")</span>
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <label class="label-journal">Account Access</label>
+                    <button class="btn-outline-journal w-100 mb-2" @onclick="ChangePassword">
+                        Change Password / PIN
+                    </button>
+                </div>
+                
+                 <div class="mt-auto">
+                    <button class="btn btn-danger w-100 py-3 rounded-pill fw-bold shadow-sm" @onclick="Logout">
+                        🚪 Log Out
+                    </button>
+                    <p class="text-center text-muted mt-2 small">See you next time!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Toast? Toast { get; set; }
+    
+    private DateTime? startDate = DateTime.Today.AddMonths(-1);
+    private DateTime? endDate = DateTime.Today;
+    private bool isExporting = false;
+    private bool isDarkMode = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var savedTheme = await JS.InvokeAsync<string>("localStorage.getItem", "journal-theme");
+                isDarkMode = savedTheme == "dark";
+                StateHasChanged();
+            }
+            catch { /* Ignore */ }
+        }
+    }
+
+    private async Task ExportPdf()
+    {
+        if (startDate > endDate)
+        {
+            Toast?.ShowWarning("Start date must be before end date.", "Invalid Date Range");
+            return;
+        }
+        
+        try
+        {
+            isExporting = true;
+            var range = new DateRangeDto { StartDate = startDate, EndDate = endDate };
+            var pdfBytes = await ExportService.ExportToPdfAsync(range);
+
+            var fileName = $"Journal_Export_{DateTime.Now:yyyyMMdd}.pdf";
+            await JS.InvokeVoidAsync("appFunctions.downloadFileFromStream", fileName, pdfBytes);
+            Toast?.ShowSuccess("Your journal export is ready!", "Export Complete");
+        }
+        catch (Exception ex)
+        {
+            Toast?.ShowError("We couldn't export your journal. Please try again.", "Export Failed");
+            Console.WriteLine($"Export error: {ex.Message}");
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        var themeClass = isDarkMode ? "dark-mode" : "";
+        await JS.InvokeVoidAsync("eval", $"document.body.className = '{themeClass}'");
+        await JS.InvokeVoidAsync("localStorage.setItem", "journal-theme", isDarkMode ? "dark" : "light");
+        Toast?.ShowInfo(isDarkMode ? "Switched to dark mode" : "Switched to light mode", "Theme Updated");
+    }
+
+    private void ChangePassword()
+    {
+         NavigationManager.NavigateTo("/setup-password");
+    }
+
+    private async Task Logout()
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to log out?");
+        if (confirmed)
+        {
+            SecurityService.Logout();
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+}

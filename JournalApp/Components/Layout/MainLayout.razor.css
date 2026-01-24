@@ -1,0 +1,144 @@
+/* MainLayout scoped styles */
+
+.page {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+}
+
+.page.sidebar-collapsed .sidebar {
+    transform: translateX(-280px);
+}
+
+.page.sidebar-collapsed main {
+    margin-left: 0;
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    display: none;
+}
+
+@media (max-width: 992px) {
+    .sidebar-overlay {
+        display: block;
+    }
+
+    .sidebar-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+/* Top Row Header */
+.top-row {
+    height: 64px;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--paper-surface);
+    border-bottom: 1px solid var(--sidebar-border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+/* Content Area */
+.content {
+    padding: 2rem;
+    max-width: 100%;
+}
+
+/* Hamburger Toggle Button */
+.btn-toggle-sidebar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--ink-secondary);
+    transition: all 0.15s ease;
+}
+
+.btn-toggle-sidebar:hover {
+    background: var(--nav-bg-hover);
+    color: var(--ink-primary);
+}
+
+.hamburger-icon {
+    width: 20px;
+    height: 14px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.hamburger-icon span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: currentColor;
+    border-radius: 2px;
+    transition: all 0.25s ease;
+}
+
+/* Theme Toggle Button */
+.btn-theme-toggle {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--paper-surface);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--accent-gold);
+    font-size: 1.25rem;
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.btn-theme-toggle:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Logout button styling */
+.top-row .btn-link {
+    color: var(--ink-secondary);
+    font-weight: 500;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+.top-row .btn-link:hover {
+    color: var(--ink-primary);
+    background: var(--nav-bg-hover);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .top-row {
+        padding: 0 1rem;
+    }
+
+    .content {
+        padding: 1rem;
+    }
+}

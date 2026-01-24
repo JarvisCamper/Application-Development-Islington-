@@ -1,0 +1,98 @@
+@* Toast Notification Component *@
+
+<div class="toast-container">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast-item @toast.Type.ToString().ToLower() @(toast.IsVisible ? "show" : "hide")" @key="toast.Id">
+            <div class="toast-icon">
+                @switch (toast.Type)
+                {
+                    case ToastType.Success:
+                        <span>✓</span>
+                        break;
+                    case ToastType.Error:
+                        <span>✕</span>
+                        break;
+                    case ToastType.Warning:
+                        <span>⚠</span>
+                        break;
+                    case ToastType.Info:
+                        <span>ℹ</span>
+                        break;
+                }
+            </div>
+            <div class="toast-content">
+                @if (!string.IsNullOrEmpty(toast.Title))
+                {
+                    <div class="toast-title">@toast.Title</div>
+                }
+                <div class="toast-message">@toast.Message</div>
+            </div>
+            <button class="toast-close" @onclick="() => DismissToast(toast.Id)">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastItem> _toasts = new();
+    private int _toastId = 0;
+
+    public void ShowSuccess(string message, string? title = null, int durationMs = 4000)
+        => Show(ToastType.Success, message, title ?? "Success", durationMs);
+
+    public void ShowError(string message, string? title = null, int durationMs = 6000)
+        => Show(ToastType.Error, message, title ?? "Error", durationMs);
+
+    public void ShowWarning(string message, string? title = null, int durationMs = 5000)
+        => Show(ToastType.Warning, message, title ?? "Warning", durationMs);
+
+    public void ShowInfo(string message, string? title = null, int durationMs = 4000)
+        => Show(ToastType.Info, message, title ?? "Info", durationMs);
+
+    private async void Show(ToastType type, string message, string title, int durationMs)
+    {
+        var toast = new ToastItem
+        {
+            Id = ++_toastId,
+            Type = type,
+            Title = title,
+            Message = message,
+            IsVisible = true
+        };
+
+        _toasts.Add(toast);
+        StateHasChanged();
+
+        // Auto-dismiss after duration
+        await Task.Delay(durationMs);
+        DismissToast(toast.Id);
+    }
+
+    private void DismissToast(int id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast != null)
+        {
+            toast.IsVisible = false;
+            StateHasChanged();
+            
+            // Remove from list after animation
+            Task.Delay(300).ContinueWith(_ =>
+            {
+                _toasts.Remove(toast);
+                InvokeAsync(StateHasChanged);
+            });
+        }
+    }
+
+    public enum ToastType { Success, Error, Warning, Info }
+
+    private class ToastItem
+    {
+        public int Id { get; set; }
+        public ToastType Type { get; set; }
+        public string Title { get; set; } = "";
+        public string Message { get; set; } = "";
+        public bool IsVisible { get; set; }
+    }
+}

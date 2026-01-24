@@ -1,0 +1,362 @@
+﻿@page "/add-entry"
+@page "/add-entry/{Id:int}"
+@page "/journal/add"
+@using JournalApp.Models.JournalEntry
+@using JournalApp.Models.Mood
+@using JournalApp.Models.Category
+@using JournalApp.Models.Tag
+@using JournalApp.Components.Common
+@using JournalApp.Services
+@inject IJournalService JournalService
+@inject IMoodService MoodService
+@inject ICategoryService CategoryService
+@inject ITagService TagService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<div class="container-fluid animate-fade-in-up p-4 position-relative">
+    <div class="mx-auto" style="max-width: 900px;">
+        
+        @if (isSaving)
+        {
+            <LoadingSpinner />
+        }
+
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center my-5" style="min-height: 200px;">
+                <LoadingSpinner />
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <!-- Paper Writing Area -->
+                <div class="paper-writing-area mb-4">
+                    <div class="paper-margin"></div> <!-- Red line margin -->
+                    
+                    <!-- Header Actions (Date, Preview Toggle) -->
+                    <div class="d-flex justify-content-between align-items-center mb-4 ps-md-4">
+                         <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted small text-uppercase fw-bold">Date:</span>
+                            <InputDate @bind-Value="model.Date" class="input-journal border-0 bg-transparent p-0 m-0 w-auto text-serif fw-bold text-primary" style="font-size: 1.1rem;" @oninput="CheckDuplicateEntry" />
+                        </div>
+
+                         <div class="form-check form-switch preview-toggle m-0">
+                            <input class="form-check-input" type="checkbox" id="previewMode" @bind="isPreviewMode">
+                            <label class="form-check-label text-muted small" for="previewMode">Read Mode</label>
+                        </div>
+                    </div>
+
+                    <!-- Title Input -->
+                    <div class="mb-4 ps-md-4 px-3">
+                        <InputText @bind-Value="model.Title" class="w-100 border-0 bg-transparent text-serif fw-bold" placeholder="Give your day a title..." style="font-size: 2rem; outline: none; color: var(--ink-primary);" />
+                        <hr class="border-secondary opacity-25 mt-2 ms-0 me-0" />
+                    </div>
+
+                    <!-- Body Input (Lined Paper) -->
+                    <div class="ps-md-4 paper-lines">
+                        @if (isPreviewMode)
+                        {
+                            <div class="markdown-preview-area" style="min-height: 400px;">
+                                <MarkdownView Content="@model.Content" />
+                            </div>
+                        }
+                        else
+                        {
+                            <InputTextArea @bind-Value="model.Content" class="paper-textarea" placeholder="Start writing your story..." />
+                        }
+                    </div>
+                </div>
+
+                <!-- Bottom Metadata Section -->
+                <div class="paper-card p-4">
+                    <h5 class="text-serif mb-4 text-muted">📝 Entry Details</h5>
+                    
+                    <div class="row g-4">
+                        <!-- Moods -->
+                        <div class="col-md-6">
+                            <label class="label-journal mb-2">How do you feel? (Required)</label>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                @foreach (var mood in moods)
+                                {
+                                    <button type="button" 
+                                            class="mood-pill @(model.PrimaryMoodId == mood.Id ? "selected" : "")"
+                                            @onclick="() => SelectMood(mood.Id)">
+                                        <span class="mood-emoji">@mood.Icon</span> @mood.Name
+                                    </button>
+                                }
+                            </div>
+                            
+                            @if (model.PrimaryMoodId != 0)
+                            {
+                                <label class="label-journal mb-2 text-muted small">Secondary Moods (Optional, Max 2)</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var mood in moods)
+                                    {
+                                        var isSelected = model.SecondaryMood1Id == mood.Id || model.SecondaryMood2Id == mood.Id;
+                                        var isDisabled = !isSelected && model.SecondaryMood1Id.HasValue && model.SecondaryMood2Id.HasValue;
+                                        
+                                        <button type="button" 
+                                                disabled="@isDisabled"
+                                                class="mood-pill py-1 px-3 small @(isSelected ? "selected" : "opacity-75")"
+                                                @onclick="() => ToggleSecondaryMood(mood.Id)">
+                                            @mood.Icon @mood.Name
+                                        </button>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Category & Tags -->
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="label-journal">Category</label>
+                                <InputSelect @bind-Value="model.CategoryId" class="input-journal">
+                                    <option value="">Select a category...</option>
+                                    @foreach (var category in categories)
+                                    {
+                                        <option value="@category.Id">@category.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <div class="mb-0">
+                                <label class="label-journal">Tags</label>
+                                <div class="tag-container">
+                                    @foreach (var tag in tags)
+                                    {
+                                        var isSelected = model.TagIds.Contains(tag.Id);
+                                        <span class="tag-pill @(isSelected ? "selected" : "")" 
+                                              @onclick="() => ToggleTag(tag.Id)">
+                                            #@tag.Name
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between align-items-center mt-5 pt-3 border-top border-secondary border-opacity-10">
+                         @if (Id.HasValue)
+                        {
+                            <button type="button" class="btn text-danger fw-bold" @onclick="DeleteEntry">
+                                🗑️ Delete Entry
+                            </button>
+                        }
+                        else
+                        {
+                            <div></div>
+                        }
+
+                        <div class="d-flex gap-3">
+                            <button type="button" class="btn btn-link text-muted text-decoration-none" @onclick="Cancel">Cancel</button>
+                            <button type="submit" class="btn-primary-journal px-5 shadow-sm" disabled="@isSaving">
+                                @(Id.HasValue ? "Update Entry" : "Save Journal")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+    
+    [CascadingParameter]
+    private Toast? Toast { get; set; }
+
+    private CreateJournalEntryDto model = new();
+    private List<MoodDto> moods = new();
+    private List<CategoryDto> categories = new();
+    private List<TagDto> tags = new();
+    private bool isLoading = true;
+    private bool isPreviewMode = false;
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var moodTask = MoodService.GetAllMoodsAsync();
+            var categoryTask = CategoryService.GetAllCategoriesAsync();
+            var tagTask = TagService.GetAllTagsAsync();
+
+            await Task.WhenAll(moodTask, categoryTask, tagTask);
+
+            moods = (await moodTask).ToList();
+            categories = (await categoryTask).ToList();
+            tags = (await tagTask).ToList();
+
+            if (Id.HasValue)
+            {
+                var entry = await JournalService.GetEntryByIdAsync(Id.Value);
+                if (entry != null)
+                {
+                    model = new CreateJournalEntryDto
+                    {
+                        Date = entry.Date,
+                        Title = entry.Title,
+                        Content = entry.Content,
+                        PrimaryMoodId = entry.PrimaryMood.Id,
+                        SecondaryMood1Id = entry.SecondaryMood1?.Id,
+                        SecondaryMood2Id = entry.SecondaryMood2?.Id,
+                        CategoryId = entry.Category?.Id,
+                        TagIds = entry.Tags.Select(t => t.Id).ToList()
+                    };
+                }
+            }
+            else
+            {
+                // New Entry - Check if one exists for today logic
+                await CheckDuplicateEntry();
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CheckDuplicateEntry()
+    {
+        if (!Id.HasValue) // Only for new entries
+        {
+            if (!await JournalService.CanCreateEntryForDateAsync(model.Date))
+            {
+               Toast?.ShowWarning($"You already wrote a journal entry for {model.Date:MMM dd}. Please edit the existing one.", "Entry Exists");
+            }
+        }
+    }
+
+    private void SelectMood(int moodId)
+    {
+        model.PrimaryMoodId = moodId;
+    }
+
+    private void ToggleSecondaryMood(int moodId)
+    {
+        if (model.SecondaryMood1Id == moodId)
+        {
+            model.SecondaryMood1Id = null;
+        }
+        else if (model.SecondaryMood2Id == moodId)
+        {
+            model.SecondaryMood2Id = null;
+        }
+        else if (model.SecondaryMood1Id == null)
+        {
+            model.SecondaryMood1Id = moodId;
+        }
+        else if (model.SecondaryMood2Id == null)
+        {
+            model.SecondaryMood2Id = moodId;
+        }
+    }
+
+    private void ToggleTag(int tagId)
+    {
+        if (model.TagIds.Contains(tagId))
+        {
+            model.TagIds.Remove(tagId);
+        }
+        else
+        {
+            model.TagIds.Add(tagId);
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        await JS.InvokeVoidAsync("appFunctions.hideKeyboard");
+
+        if (model.PrimaryMoodId == 0)
+        {
+            Toast?.ShowWarning("Please select how you're feeling before saving.", "Mood Required");
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(model.Title))
+        {
+            Toast?.ShowWarning("Please add a title for your entry.", "Title Required");
+            return;
+        }
+        
+        isSaving = true;
+
+        try
+        {
+            if (Id.HasValue)
+            {
+                var updateDto = new UpdateJournalEntryDto
+                {
+                    Title = model.Title,
+                    Content = model.Content,
+                    PrimaryMoodId = model.PrimaryMoodId,
+                    SecondaryMood1Id = model.SecondaryMood1Id,
+                    SecondaryMood2Id = model.SecondaryMood2Id,
+                    CategoryId = model.CategoryId,
+                    TagIds = model.TagIds
+                };
+                await JournalService.UpdateEntryAsync(Id.Value, updateDto);
+            }
+            else
+            {
+                // Final duplicate check before save
+                if (!await JournalService.CanCreateEntryForDateAsync(model.Date))
+                {
+                    Toast?.ShowError($"An entry for {model.Date:MMM dd} already exists.", "Cannot Save");
+                    return;
+                }
+                await JournalService.CreateEntryAsync(model);
+            }
+            
+            Toast?.ShowSuccess(Id.HasValue ? "Entry updated successfully!" : "Entry saved to your journal!");
+            NavigationManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            Toast?.ShowError("We couldn't save your entry. Please try again.", "Save Failed");
+            Console.WriteLine($"Error saving entry: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteEntry()
+    {
+        if (Id.HasValue)
+        {
+            bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this entry? This action cannot be undone.");
+            if (confirmed)
+            {
+                try
+                {
+                    await JournalService.DeleteEntryAsync(Id.Value);
+                    Toast?.ShowSuccess("Entry deleted successfully.");
+                    NavigationManager.NavigateTo("/");
+                }
+                catch (Exception ex)
+                {
+                    Toast?.ShowError("We couldn't delete this entry. Please try again.", "Delete Failed");
+                    Console.WriteLine($"Error deleting entry: {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}

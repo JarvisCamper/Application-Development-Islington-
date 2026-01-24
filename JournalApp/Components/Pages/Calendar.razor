@@ -1,0 +1,130 @@
+﻿@page "/calendar"
+@using JournalApp.Models.JournalEntry
+@using JournalApp.Services
+@inject IJournalService JournalService
+@inject NavigationManager NavigationManager
+
+<div class="container-fluid animate-fade-in p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-gradient">Calendar</h2>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-light rounded-circle p-2" @onclick="PrevMonth">
+                <span class="oi oi-chevron-left"></span>
+            </button>
+            <h4 class="mb-0 mx-3" style="min-width: 150px; text-align: center;">@currentDate.ToString("MMMM yyyy")</h4>
+            <button class="btn btn-sm btn-outline-light rounded-circle p-2" @onclick="NextMonth">
+                 <span class="oi oi-chevron-right"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <!-- Days Header -->
+        <div class="d-grid" style="grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; margin-bottom: 1rem;">
+            @foreach (var day in new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" })
+            {
+                <div class="text-secondary fw-bold small text-uppercase">@day</div>
+            }
+        </div>
+
+        <!-- Days Grid -->
+        <div class="d-grid" style="grid-template-columns: repeat(7, 1fr); gap: 10px;">
+            @{
+                var firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+                var daysInMonth = DateTime.DaysInMonth(currentDate.Year, currentDate.Month);
+                var startDayOfWeek = (int)firstDayOfMonth.DayOfWeek;
+                var cells = 42; // 6 rows * 7
+            }
+
+            @for (int i = 0; i < startDayOfWeek; i++)
+            {
+                <div class="d-flex align-items-center justify-content-center p-2"></div>
+            }
+
+            @for (int day = 1; day <= daysInMonth; day++)
+            {
+                var date = new DateTime(currentDate.Year, currentDate.Month, day);
+                var entry = entries.FirstOrDefault(e => e.Date.Date == date.Date);
+                var isToday = date.Date == DateTime.Today;
+                var hasEntry = entry != null;
+                
+                <div class="d-flex justify-content-center align-items-center p-1">
+                    <div class="calendar-day-cell @(hasEntry ? "active-day" : "") @(isToday ? "today" : "")" 
+                         style="width: 48px; height: 48px;"
+                         @onclick="() => NavigateToDate(date, entry?.Id)">
+                        
+                        @if (hasEntry)
+                        {
+                            <span style="font-size: 1.2rem;" title="@entry.PrimaryMoodName">@entry.PrimaryMoodIcon</span>
+                        }
+                        else
+                        {
+                             <span>@day</span>
+                        }
+                    </div>
+                </div>
+            }
+            
+            @for (int i = 0; i < (cells - (startDayOfWeek + daysInMonth)); i++)
+            {
+                 <div class="d-flex align-items-center justify-content-center p-2"></div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateTime currentDate = DateTime.Today;
+    private List<JournalEntryListDto> entries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        // For simplicity, we are using the filtered range search, but passing a whole month range.
+        // We might want to request a larger page size or a specific endpoint for calendar data.
+        // Reusing SearchEntriesAsync with date range for now.
+        
+        var firstDay = new DateTime(currentDate.Year, currentDate.Month, 1);
+        var lastDay = firstDay.AddMonths(1).AddDays(-1);
+        
+        var filter = new JournalApp.Models.Common.SearchFilterDto
+        {
+            StartDate = firstDay,
+            EndDate = lastDay,
+            Pagination = new JournalApp.Models.Common.PaginationDto { PageNumber = 1, PageSize = 100 } // Max 31 days but safe margin
+        };
+
+        var result = await JournalService.SearchEntriesAsync(filter);
+        entries = result.Items.ToList();
+    }
+
+    private async Task PrevMonth()
+    {
+        currentDate = currentDate.AddMonths(-1);
+        await LoadEntries();
+    }
+
+    private async Task NextMonth()
+    {
+        currentDate = currentDate.AddMonths(1);
+        await LoadEntries();
+    }
+
+    private void NavigateToDate(DateTime date, int? entryId)
+    {
+        if (entryId.HasValue)
+        {
+             NavigationManager.NavigateTo($"/add-entry/{entryId}");
+        }
+        else
+        {
+             // Optional: Navigate to add-entry with prepopulated date?
+             // Not supported by route yet, but we could just let them create New and pick date.
+             NavigationManager.NavigateTo("/add-entry");
+        }
+    }
+}
