@@ -21,21 +21,21 @@
                 <div class="glass-card text-center">
                     <span class="fs-1">🔥</span>
                     <h3 class="mt-2">@analytics.Streak.LongestStreak</h3>
-                    <p class="text-white-50 mb-0">Longest Streak</p>
+                    <p class="text-black-50 mb-0">Longest Streak</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="glass-card text-center">
                     <span class="fs-1">📝</span>
                     <h3 class="mt-2">@analytics.Streak.TotalEntries</h3>
-                    <p class="text-white-50 mb-0">Total Entries</p>
+                    <p class="text-black-50 mb-0">Total Entries</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="glass-card text-center">
                     <span class="fs-1">🏷️</span>
                     <h3 class="mt-2">@(string.IsNullOrEmpty(analytics.MostUsedTag) ? "-" : analytics.MostUsedTag)</h3>
-                    <p class="text-white-50 mb-0">Top Tag</p>
+                    <p class="text-black-50 mb-0">Top Tag</p>
                 </div>
             </div>
         </div>
@@ -48,7 +48,7 @@
                     
                     @if (!analytics.MoodDistribution.Any())
                     {
-                        <p class="text-center text-white-50 py-4">Not enough data yet.</p>
+                        <p class="text-center text-black-50 py-4">Not enough data yet.</p>
                     }
                     else
                     {
@@ -91,14 +91,14 @@
                                     <div class="progress" style="width: 50px; height: 6px;">
                                         <div class="progress-bar bg-info" style="width: @(tag.Percentage)%"></div>
                                     </div>
-                                    <span class="small text-white-50">@Math.Round(tag.Percentage)%</span>
+                                    <span class="small text-black-50">@Math.Round(tag.Percentage)%</span>
                                 </div>
                             }
                         </div>
                     }
                     else
                     {
-                         <p class="text-white-50">No tags used yet.</p>
+                         <p class="text-black-50">No tags used yet.</p>
                     }
                 </div>
                 
@@ -117,16 +117,16 @@
                                      <div class="w-100 rounded-top" 
                                           style="height: @(height * 1.5)px; max-height: 120px; background: var(--secondary); opacity: 0.8; transition: height 0.3s;" 
                                           title="@trend.WordCount words">
-                                          @if(height > 20) { <span class="d-block text-center text-white small" style="font-size: 0.6rem; margin-top: -16px;">@trend.WordCount</span> }
+                                          @if(height > 20) { <span class="d-block text-center text-black small" style="font-size: 0.6rem; margin-top: -16px;">@trend.WordCount</span> }
                                      </div>
-                                     <small class="text-white-50 text-center" style="font-size: 0.6rem; position: absolute; bottom: -20px; width: 50px;">@trend.Date.ToString("dd")</small>
+                                     <small class="text-black-50 text-center" style="font-size: 0.6rem; position: absolute; bottom: -20px; width: 50px;">@trend.Date.ToString("dd")</small>
                                 </div>
                             }
                         </div>
                     }
                     else
                     {
-                        <p class="text-white-50">Write more entries to see trends.</p>
+                        <p class="text-black-50">Write more entries to see trends.</p>
                     }
                 </div>
              </div>
