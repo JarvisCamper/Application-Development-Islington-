@@ -84,8 +84,8 @@
 
     private async Task LoadEntries()
     {
-        // For simplicity, we are using the filtered range search, but passing a whole month range.
-        // We might want to request a larger page size or a specific endpoint for calendar data.
+        //Used the filtered range search, but passing a whole month range.
+        //Might want to request a larger page size or a specific endpoint for calendar data.
         // Reusing SearchEntriesAsync with date range for now.
         
         var firstDay = new DateTime(currentDate.Year, currentDate.Month, 1);
@@ -122,8 +122,7 @@
         }
         else
         {
-             // Optional: Navigate to add-entry with prepopulated date?
-             // Not supported by route yet, but we could just let them create New and pick date.
+
              NavigationManager.NavigateTo("/add-entry");
         }
     }
